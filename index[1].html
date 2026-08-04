@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Identity Verification</title>
+  <meta name="description" content="Secure facial liveness check for identity verification." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #080c16;
+      --surface:   #0e1422;
+      --border:    rgba(0,229,255,0.13);
+      --border-s:  rgba(255,255,255,0.07);
+      --cyan:      #00e5ff;
+      --cyan-dim:  rgba(0,229,255,0.16);
+      --cyan-glow: rgba(0,229,255,0.38);
+      --amber:     #f59e0b;
+      --amber-dim: rgba(245,158,11,0.15);
+      --green:     #22c55e;
+      --red:       #ef4444;
+      --red-dim:   rgba(239,68,68,0.12);
+      --fg:        #e8edf5;
+      --fg-muted:  #6b7a99;
+      --font-ui:   -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                   "Helvetica Neue", Arial, sans-serif;
+      --font-mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo,
+                   "Courier New", monospace;
+      --radius:    22px;
+    }
+
+    html { height: 100%; }
+
+    body {
+      min-height: 100vh; min-height: 100dvh;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--font-ui);
+      -webkit-font-smoothing: antialiased;
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background: radial-gradient(ellipse 60% 50% at 50% 40%,
+                    rgba(0,229,255,0.045) 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+
+    #app { width: 100%; max-width: 420px; position: relative; z-index: 1; }
+
+    /* ─ Screens ─────────────────────────────────────────────────── */
+    .screen { display: none; }
+    .screen.active { display: flex; }
+
+    .card {
+      flex-direction: column; align-items: center; text-align: center;
+      width: 100%;
+      background: rgba(14,20,34,0.88);
+      backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 40px 32px;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.025) inset,
+                  0 32px 80px rgba(0,0,0,0.55);
+      animation: fadeUp 0.38s cubic-bezier(0.23,1,0.32,1) both;
+    }
+
+    .liveness-wrap {
+      flex-direction: column; align-items: center; width: 100%;
+      animation: fadeUp 0.38s cubic-bezier(0.23,1,0.32,1) both;
+    }
+
+    /* ─ Animations ──────────────────────────────────────────────── */
+    @keyframes fadeUp {
+      from { opacity:0; transform: translateY(18px) scale(0.985); }
+      to   { opacity:1; transform: translateY(0) scale(1); }
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes ringPing {
+      0%        { transform: scale(1);   opacity: 0.55; }
+      75%, 100% { transform: scale(1.4); opacity: 0; }
+    }
+    @keyframes scanLine {
+      0%      { top: -2px;  opacity: 1; }
+      49%     { opacity: 1; }
+      50%     { top: 100%;  opacity: 0; }
+      50.001% { top: -2px;  opacity: 0; }
+      51%     { opacity: 1; }
+      100%    { top: 100%;  opacity: 1; }
+    }
+    @keyframes camPulse {
+      0%,100% { opacity:0.25; transform: scale(1); }
+      50%     { opacity:0.6;  transform: scale(1.025); }
+    }
+    @keyframes overlayFade { from { opacity:0; } to { opacity:1; } }
+    @keyframes popIn {
+      from { transform: scale(0.35); opacity:0; }
+      to   { transform: scale(1);    opacity:1; }
+    }
+    @keyframes verifiedPulse {
+      0%,100% { box-shadow: 0 0 22px var(--cyan-glow), 0 4px 14px rgba(0,0,0,.28); }
+      50%     { box-shadow: 0 0 42px rgba(0,229,255,.55), 0 4px 22px rgba(0,0,0,.35); }
+    }
+    @keyframes progressGrow {
+      from { width: 0%; }
+    }
+
+    /* ─ Icon ring ───────────────────────────────────────────────── */
+    .icon-ring {
+      width:80px; height:80px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      margin-bottom:24px; position:relative;
+      background: var(--cyan-dim); flex-shrink:0;
+    }
+    .icon-ring::after {
+      content:''; position:absolute; inset:-3px; border-radius:50%;
+      border:1.5px solid rgba(0,229,255,0.28);
+      animation: ringPing 3s cubic-bezier(0,0,0.2,1) infinite;
+    }
+    .icon-ring svg {
+      width:36px; height:36px; stroke:var(--cyan); fill:none;
+      stroke-width:1.75; stroke-linecap:round; stroke-linejoin:round;
+    }
+    .icon-ring.amber { background:var(--amber-dim); }
+    .icon-ring.amber svg { stroke:var(--amber); }
+    .icon-ring.amber::after { border-color:rgba(245,158,11,0.25); animation:none; }
+    .icon-ring.red { background:var(--red-dim); }
+    .icon-ring.red svg { stroke:var(--red); }
+    .icon-ring.red::after { border-color:rgba(239,68,68,0.25); animation:none; }
+
+    /* ─ Typography ──────────────────────────────────────────────── */
+    h1 { font-size:26px; font-weight:800; letter-spacing:-.6px; margin-bottom:10px; line-height:1.2; }
+    h2 { font-size:22px; font-weight:750; letter-spacing:-.4px; margin-bottom:10px; }
+    p  { font-size:14px; color:var(--fg-muted); line-height:1.75; max-width:310px; }
+
+    /* ─ Info rows ───────────────────────────────────────────────── */
+    .info-rows { width:100%; display:flex; flex-direction:column; gap:9px; margin:22px 0 26px; }
+    .info-row {
+      display:flex; align-items:center; gap:13px; padding:13px 15px;
+      background:rgba(255,255,255,0.028); border:1px solid var(--border-s);
+      border-radius:13px; text-align:left;
+    }
+    .info-row svg { width:18px; height:18px; stroke:var(--cyan); fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0; }
+    .info-row span { font-size:13px; font-weight:500; color:var(--fg-muted); }
+
+    /* ─ Buttons ─────────────────────────────────────────────────── */
+    .btn {
+      display:flex; align-items:center; justify-content:center; gap:8px;
+      width:100%; height:54px; border-radius:13px; border:none; cursor:pointer;
+      font-family:var(--font-ui); font-size:15px; font-weight:700; letter-spacing:.15px;
+      transition: transform .2s cubic-bezier(.23,1,.32,1),
+                  box-shadow .2s cubic-bezier(.23,1,.32,1),
+                  background .2s, opacity .2s;
+    }
+    .btn-primary { background:var(--cyan); color:#000; box-shadow:0 0 22px var(--cyan-glow),0 4px 14px rgba(0,0,0,.28); }
+    .btn-primary:hover { transform:translateY(-2px); box-shadow:0 0 42px rgba(0,229,255,.52),0 10px 28px rgba(0,0,0,.38); }
+    .btn-primary:active { transform:translateY(0); }
+    .btn-outline { background:transparent; color:var(--fg-muted); border:1px solid var(--border-s); }
+    .btn-outline:hover { background:rgba(255,255,255,.04); color:var(--fg); border-color:var(--border); }
+
+    .btn-step {
+      width:auto; padding:0 28px; height:46px; border-radius:999px;
+      font-size:14px; font-weight:600;
+    }
+
+    /* ── Done button states ─── */
+    .btn-step.state-waiting {
+      background:transparent; color:var(--fg-muted);
+      border:1.5px solid rgba(255,255,255,0.1);
+      cursor:not-allowed; opacity:0.45; pointer-events:none;
+    }
+    .btn-step.state-detecting {
+      background:transparent; color:var(--fg-muted);
+      border:1.5px solid rgba(255,255,255,0.2);
+      cursor:not-allowed; opacity:0.65; pointer-events:none;
+    }
+    .btn-step.state-verified {
+      background:var(--cyan); color:#000;
+      border:1.5px solid var(--cyan);
+      cursor:pointer; opacity:1; pointer-events:auto;
+      animation: verifiedPulse 1.6s ease-in-out infinite;
+    }
+    .btn-step.state-verified:hover { transform:scale(1.04); }
+    .btn-step.state-verified:active { transform:scale(0.97); }
+
+    /* ─ Camera frame ────────────────────────────────────────────── */
+    .camera-frame {
+      position:relative; width:230px; height:310px; border-radius:999px;
+      overflow:hidden; border:5px solid rgba(8,12,22,0.92);
+      box-shadow: 0 0 0 2px var(--cyan),
+                  0 0 38px rgba(0,229,255,0.22),
+                  0 0 80px rgba(0,229,255,0.08),
+                  0 24px 56px rgba(0,0,0,0.55);
+      background:#000; flex-shrink:0;
+    }
+    .camera-frame video {
+      width:100%; height:100%; object-fit:cover;
+      transform:scaleX(-1); display:block; background:#000;
+    }
+    .cam-ring {
+      position:absolute; inset:-14px; border-radius:50%;
+      border:1.5px solid rgba(0,229,255,0.18);
+      animation: camPulse 3s ease-in-out infinite;
+      pointer-events:none; z-index:1;
+    }
+    .scan-line {
+      position:absolute; left:0; right:0; height:2px;
+      background:linear-gradient(90deg, transparent 0%, var(--cyan) 50%, transparent 100%);
+      box-shadow:0 0 10px var(--cyan), 0 0 22px var(--cyan);
+      z-index:10; top:-2px;
+      animation: scanLine 2.6s linear infinite;
+    }
+    .cam-corner { position:absolute; width:22px; height:22px; z-index:15; pointer-events:none; }
+    .cam-corner.tl { top:18px; left:18px;   border-top:2.5px solid var(--cyan); border-left:2.5px solid var(--cyan); border-radius:4px 0 0 0; }
+    .cam-corner.tr { top:18px; right:18px;  border-top:2.5px solid var(--cyan); border-right:2.5px solid var(--cyan); border-radius:0 4px 0 0; }
+    .cam-corner.bl { bottom:18px; left:18px; border-bottom:2.5px solid var(--cyan); border-left:2.5px solid var(--cyan); border-radius:0 0 0 4px; }
+    .cam-corner.br { bottom:18px; right:18px; border-bottom:2.5px solid var(--cyan); border-right:2.5px solid var(--cyan); border-radius:0 0 4px 0; }
+
+    /* ─ Overlays inside camera ──────────────────────────────────── */
+    .step-overlay {
+      position:absolute; inset:0;
+      display:flex; align-items:center; justify-content:center;
+      background:rgba(0,229,255,0.12); backdrop-filter:blur(10px);
+      -webkit-backdrop-filter:blur(10px); z-index:20;
+      animation: overlayFade 0.28s ease both;
+    }
+    .step-check-circle {
+      width:96px; height:96px; border-radius:50%; background:var(--cyan);
+      display:flex; align-items:center; justify-content:center;
+      box-shadow:0 0 55px rgba(0,229,255,.75), 0 0 110px rgba(0,229,255,.3);
+      animation: popIn 0.38s cubic-bezier(.23,1,.32,1) both;
+    }
+    .step-check-circle svg { width:50px; height:50px; stroke:#000; fill:none; stroke-width:3; stroke-linecap:round; stroke-linejoin:round; }
+
+    .proc-overlay {
+      position:absolute; inset:0;
+      background:rgba(8,12,22,0.88); backdrop-filter:blur(14px);
+      -webkit-backdrop-filter:blur(14px); z-index:30;
+      display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px;
+      animation: overlayFade 0.3s ease both;
+    }
+    .spinner { width:54px; height:54px; border:4px solid rgba(0,229,255,0.14); border-top-color:var(--cyan); border-radius:50%; animation:spin 1.1s linear infinite; }
+    .proc-label { font-family:var(--font-mono); font-size:11px; font-weight:500; letter-spacing:.22em; color:var(--cyan); text-transform:uppercase; text-shadow:0 0 12px rgba(0,229,255,.65); }
+
+    /* ─ Liveness instructions ───────────────────────────────────── */
+    .liveness-info { margin-top:30px; width:100%; display:flex; flex-direction:column; align-items:center; }
+    .step-badge { font-size:11px; font-weight:700; color:var(--cyan); letter-spacing:.2em; text-transform:uppercase; margin-bottom:10px; }
+
+    .step-text {
+      font-size:20px; font-weight:700; color:var(--fg);
+      text-align:center; min-height:54px;
+      display:flex; align-items:center; justify-content:center;
+      padding:0 12px; line-height:1.3;
+      transition: opacity .2s ease, transform .2s ease;
+    }
+    .step-text.fading { opacity:0; transform:translateY(8px); }
+
+    /* Detection hint */
+    .detect-hint {
+      font-size:12px; font-weight:500; color:var(--fg-muted);
+      margin-top:8px; min-height:18px; text-align:center;
+      transition: color 0.3s ease;
+    }
+    .detect-hint.ok { color: var(--green); }
+
+    /* Detection progress bar */
+    .detect-bar-wrap {
+      width:160px; height:4px; border-radius:999px;
+      background:rgba(255,255,255,0.08);
+      margin-top:12px; overflow:hidden;
+    }
+    .detect-bar {
+      height:100%; border-radius:999px;
+      background: var(--cyan);
+      box-shadow: 0 0 8px rgba(0,229,255,0.5);
+      width: 0%;
+      transition: width 0.25s ease, background 0.3s ease;
+    }
+    .detect-bar.done { background: var(--green); }
+
+    /* Progress dots */
+    .dots { display:flex; gap:9px; align-items:center; margin:16px 0 0; }
+    .dot { height:5px; border-radius:999px; background:rgba(255,255,255,0.1); transition: width .45s cubic-bezier(.23,1,.32,1), background .45s ease, box-shadow .45s ease; }
+    .dot.active  { width:38px; background:var(--cyan); box-shadow:0 0 10px rgba(0,229,255,.55); }
+    .dot.done    { width:18px; background:rgba(0,229,255,.38); }
+    .dot.pending { width:18px; }
+
+    .done-row { margin-top:18px; min-height:50px; display:flex; align-items:center; justify-content:center; }
+
+    /* ─ Reference ID ─────────────────────────────────────────────── */
+    .ref-box { width:100%; padding:18px; border-radius:14px; background:rgba(255,255,255,0.028); border:1px solid var(--border-s); margin:22px 0 26px; display:flex; flex-direction:column; align-items:center; gap:5px; }
+    .ref-label { font-size:10px; font-weight:700; letter-spacing:.2em; color:var(--fg-muted); text-transform:uppercase; }
+    .ref-id { font-family:var(--font-mono); font-size:22px; font-weight:600; color:var(--amber); letter-spacing:.08em; }
+
+    /* ─ Utility ─────────────────────────────────────────────────── */
+    .hidden { display:none !important; }
+    .mt20 { margin-top:20px; }
+  </style>
+</head>
+<body>
+
+<!-- Hidden canvas for frame analysis (never shown) -->
+<canvas id="analysis-canvas" width="80" height="107" style="display:none;position:absolute;"></canvas>
+
+<div id="app">
+
+  <!-- ══ START ════════════════════════════════════════════════════ -->
+  <div id="screen-start" class="screen card active">
+    <div class="icon-ring">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        <polyline points="9 12 11 14 15 10"/>
+      </svg>
+    </div>
+    <h1>Identity Verification</h1>
+    <p>To protect your account, we need to verify your identity with a quick facial liveness check.</p>
+    <div class="info-rows">
+      <div class="info-row">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+          <circle cx="12" cy="13" r="4"/>
+        </svg>
+        <span>Requires your front camera</span>
+      </div>
+      <div class="info-row">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        <span>Biometric data is never stored</span>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="startVerification()">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      Start Verification
+    </button>
+  </div>
+
+  <!-- ══ REQUESTING ═══════════════════════════════════════════════ -->
+  <div id="screen-requesting" class="screen card">
+    <div class="icon-ring">
+      <svg viewBox="0 0 24 24" style="animation:spin 1.1s linear infinite" aria-hidden="true">
+        <circle cx="12" cy="12" r="10" stroke="rgba(0,229,255,0.18)" stroke-width="2.5"/>
+        <path d="M12 2a10 10 0 0 1 10 10" stroke="var(--cyan)" stroke-width="2.5"/>
+      </svg>
+    </div>
+    <h2>Requesting Camera</h2>
+    <p>Please allow camera access in your browser when prompted.</p>
+  </div>
+
+  <!-- ══ LIVENESS ══════════════════════════════════════════════════ -->
+  <div id="screen-liveness" class="screen liveness-wrap">
+
+    <!-- Camera viewport -->
+    <div style="position:relative;display:flex;align-items:center;justify-content:center;">
+      <div class="cam-ring"></div>
+      <div class="camera-frame" id="camera-frame">
+        <div class="scan-line" id="scan-line"></div>
+        <div class="cam-corner tl"></div>
+        <div class="cam-corner tr"></div>
+        <div class="cam-corner bl"></div>
+        <div class="cam-corner br"></div>
+
+        <!-- Step success overlay -->
+        <div class="step-overlay hidden" id="step-overlay">
+          <div class="step-check-circle">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+        </div>
+
+        <!-- Processing overlay -->
+        <div class="proc-overlay hidden" id="proc-overlay">
+          <div class="spinner"></div>
+          <span class="proc-label">Analyzing</span>
+        </div>
+
+        <video id="cam-video" autoplay playsinline muted></video>
+      </div>
+    </div>
+
+    <!-- Instructions -->
+    <div class="liveness-info">
+      <div class="step-badge" id="step-badge">Step 1 of 3</div>
+      <div class="step-text"  id="step-text">Look straight at the camera</div>
+
+      <!-- Detection feedback -->
+      <div class="detect-hint" id="detect-hint">Waiting for camera...</div>
+      <div class="detect-bar-wrap">
+        <div class="detect-bar" id="detect-bar"></div>
+      </div>
+
+
+      <div class="done-row">
+        <button class="btn btn-step state-waiting" id="done-btn" onclick="completeStep()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+          Done
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ ERROR ═════════════════════════════════════════════════════ -->
+  <div id="screen-error" class="screen card">
+    <div class="icon-ring red">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <circle cx="12" cy="16" r="0.5" fill="var(--red)" stroke="none"/>
+      </svg>
+    </div>
+    <h2>Camera Access Denied</h2>
+    <p id="error-msg">We could not access your camera. Please allow camera permissions and try again.</p>
+    <button class="btn btn-outline mt20" onclick="goToStart()">Try Again</button>
+  </div>
+
+  <!-- ══ COMPLETE ══════════════════════════════════════════════════ -->
+  <div id="screen-complete" class="screen card">
+    <div class="icon-ring amber">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"/>
+        <polyline points="12 6 12 12 16 14"/>
+      </svg>
+    </div>
+    <h2>Verification Under Review</h2>
+    <p>Your identity check is being reviewed by our security team. You will receive an email notification within 24–48 hours.</p>
+    <div class="ref-box">
+      <div class="ref-label">Reference ID</div>
+      <div class="ref-id" id="ref-id">—</div>
+    </div>
+    <button class="btn btn-outline" onclick="goToStart()">Return to Start</button>
+  </div>
+
+</div>
+
+<script>
+'use strict';
+
+/* ═══════════════════════════════════════════════════════════════════
+   FACE VERIFICATION — Computer-Vision Liveness Detection
+   Uses hidden canvas + rAF loop to analyze camera frames.
+   Zero external dependencies.
+═══════════════════════════════════════════════════════════════════ */
+
+// ── Liveness step definitions ────────────────────────────────────
+const STEPS = [
+  {
+    text:    'Position your face in the frame',
+    hint:    'Center your face and hold still',
+    method:  'faceStable',
+    needed:  2500,                // ms of continuous face detection
+  },
+];
+
+// ── Canvas analysis config ────────────────────────────────────────
+const AW = 80, AH = 107;         // analysis canvas (3:4 = same as camera oval)
+
+// ── App state ─────────────────────────────────────────────────────
+let stream         = null;
+let stepIdx        = 0;
+let stepBusy       = false;       // guard: true while step-complete animation plays
+let rafId          = null;
+let prevFrame      = null;
+let analysisActive = false;
+
+// Per-step counters (reset each step)
+let stableMs    = 0;             // accumulated stable-face ms
+let lastFrameTs = 0;
+
+// Reference ID (generated once)
+const REF_ID = '#VRF-' + Math.floor(100000 + Math.random() * 900000);
+document.getElementById('ref-id').textContent = REF_ID;
+
+// ── Screen controller ─────────────────────────────────────────────
+const SCREEN_IDS = ['start','requesting','liveness','error','complete'];
+
+function show(name) {
+  SCREEN_IDS.forEach(n => {
+    const el = g('screen-' + n);
+    el.classList.remove('active');
+    el.style.animation = 'none';
+    void el.offsetHeight;
+    el.style.animation = '';
+  });
+  g('screen-' + name).classList.add('active');
+}
+
+// ── Camera helpers ────────────────────────────────────────────────
+function stopCamera() {
+  stopAnalysis();
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  const v = g('cam-video');
+  if (v) v.srcObject = null;
+}
+
+function goToStart() {
+  stopCamera();
+  stepIdx   = 0;
+  stepBusy  = false;
+  show('start');
+}
+
+async function startVerification() {
+  show('requesting');
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    setError('Your browser does not support camera access. Please use Chrome, Edge, Firefox, or Safari.');
+    return;
+  }
+
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode:'user', width:{ ideal:720 }, height:{ ideal:1280 } },
+      audio: false
+    });
+  } catch (err) {
+    // Retry without constraints if OverConstrained
+    if (err.name === 'OverconstrainedError') {
+      try { stream = await navigator.mediaDevices.getUserMedia({ video:true, audio:false }); }
+      catch(e2) { setError(cameraErrMsg(e2)); return; }
+    } else {
+      setError(cameraErrMsg(err)); return;
+    }
+  }
+
+  stepIdx  = 0;
+  stepBusy = false;
+  show('liveness');
+
+  requestAnimationFrame(() => {
+    const v = g('cam-video');
+    v.srcObject = stream;
+    v.play().catch(() => {});
+    resetStepUI();
+    startAnalysis();
+  });
+}
+
+function cameraErrMsg(err) {
+  const n = err.name || '';
+  if (n === 'NotAllowedError' || n === 'PermissionDeniedError')
+    return 'Camera access was denied. Please allow camera access in browser settings and try again.';
+  if (n === 'NotFoundError' || n === 'DevicesNotFoundError')
+    return 'No camera was found on this device.';
+  if (n === 'NotReadableError' || n === 'TrackStartError')
+    return 'The camera is already in use by another application. Please close it and try again.';
+  return 'Could not access camera: ' + (err.message || 'unexpected error.');
+}
+
+function setError(msg) {
+  g('error-msg').textContent = msg;
+  show('error');
+}
+
+// ── Liveness UI helpers ───────────────────────────────────────────
+function resetStepUI() {
+  // Reset per-step analysis state
+  stableMs    = 0;
+  motionMs    = 0;
+  refFrame    = null;
+  lastFrameTs = 0;
+  prevFrame   = null;
+
+  const s = STEPS[stepIdx];
+  g('step-badge').textContent = 'Face Capture';
+
+  // Animate step text in
+  const t = g('step-text');
+  t.classList.add('fading');
+  setTimeout(() => { t.textContent = s.text; t.classList.remove('fading'); }, 200);
+
+  // Hint
+  g('detect-hint').textContent = s.hint;
+  g('detect-hint').className   = 'detect-hint';
+
+  // Progress bar
+  setBar(0, false);
+
+  // Scan line + overlays
+  g('scan-line').style.display    = '';
+  g('step-overlay').classList.add('hidden');
+  g('proc-overlay').classList.add('hidden');
+
+  // Done button → waiting
+  setDoneBtn('waiting');
+}
+
+function setBar(frac, done) {
+  const bar = g('detect-bar');
+  bar.style.width = Math.round(frac * 100) + '%';
+  bar.className   = 'detect-bar' + (done ? ' done' : '');
+}
+
+function setHint(text, ok) {
+  const el = g('detect-hint');
+  el.textContent = text;
+  el.className   = 'detect-hint' + (ok ? ' ok' : '');
+}
+
+function setDoneBtn(state) {
+  // state: 'waiting' | 'detecting' | 'verified'
+  const btn = g('done-btn');
+  btn.className = 'btn btn-step state-' + state;
+}
+
+// ── Canvas analysis engine ────────────────────────────────────────
+let aCanvas, aCtx;
+
+function startAnalysis() {
+  if (!aCanvas) {
+    aCanvas = g('analysis-canvas');
+    aCtx    = aCanvas.getContext('2d', { willReadFrequently: true });
+  }
+  analysisActive = true;
+  rafId = requestAnimationFrame(analysisTick);
+}
+
+function stopAnalysis() {
+  analysisActive = false;
+  if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+}
+
+function analysisTick(ts) {
+  if (!analysisActive) return;
+  rafId = requestAnimationFrame(analysisTick);
+
+  const video = g('cam-video');
+  if (!video || video.readyState < 2 || video.videoWidth === 0) return;
+  if (stepBusy) return;
+
+  const dt = lastFrameTs ? Math.min(ts - lastFrameTs, 80) : 16;
+  lastFrameTs = ts;
+
+  // Draw current frame to analysis canvas
+  aCtx.drawImage(video, 0, 0, AW, AH);
+  const data = aCtx.getImageData(0, 0, AW, AH).data;
+
+  analyzeStable(data, dt);
+
+  prevFrame = new Uint8ClampedArray(data);
+}
+
+// ── Step 0: Face stable ───────────────────────────────────────────
+// Require center luminance > threshold (face present)
+// AND low frame-to-frame motion (holding still)
+// Accumulate qualifying time → enable Done after 2s
+function analyzeStable(data, dt) {
+  const centerLum = regionLum(data, 0.25, 0.20, 0.50, 0.60);
+  const hasFace   = centerLum > 42;
+
+  let motion = 0;
+  if (prevFrame) motion = frameDiff(data, prevFrame);
+  const isStill = motion < 18;
+
+  if (hasFace && isStill) {
+    stableMs += dt;
+  } else {
+    stableMs = Math.max(0, stableMs - dt * 1.5);
+  }
+
+  const needed = STEPS[0].needed;
+  const frac   = Math.min(1, stableMs / needed);
+
+  setBar(frac, frac >= 1);
+
+  if (!hasFace) {
+    setHint('Position your face in the oval', false);
+    setDoneBtn('waiting');
+  } else if (!isStill) {
+    setHint('Hold still...', false);
+    setDoneBtn('detecting');
+  } else {
+    const pct = Math.round(frac * 100);
+    if (frac >= 1) {
+      setHint('Face verified — tap Done!', true);
+      setDoneBtn('verified');
+    } else {
+      setHint('Good — hold still... ' + pct + '%', false);
+      setDoneBtn('detecting');
+    }
+  }
+}
+
+// ── Pixel math helpers ────────────────────────────────────────────
+// regionLum: average luminance of a sub-region (fractions of AW/AH)
+function regionLum(data, x0f, y0f, wf, hf) {
+  const x0 = Math.round(x0f * AW), y0 = Math.round(y0f * AH);
+  const x1 = Math.round((x0f + wf) * AW), y1 = Math.round((y0f + hf) * AH);
+  let sum = 0, n = 0;
+  for (let y = y0; y < y1; y++) {
+    for (let x = x0; x < x1; x++) {
+      const i = (y * AW + x) * 4;
+      sum += 0.299*data[i] + 0.587*data[i+1] + 0.114*data[i+2];
+      n++;
+    }
+  }
+  return n > 0 ? sum / n : 0;
+}
+
+// frameDiff: mean absolute per-channel difference (sampled every 4th pixel)
+function frameDiff(a, b) {
+  if (!a || !b || a.length !== b.length) return 0;
+  let sum = 0, n = 0;
+  for (let i = 0; i < a.length; i += 16) {   // stride 4 pixels
+    sum += (Math.abs(a[i]-b[i]) + Math.abs(a[i+1]-b[i+1]) + Math.abs(a[i+2]-b[i+2])) / 3;
+    n++;
+  }
+  return n > 0 ? sum / n : 0;
+}
+
+// ── Step complete flow ────────────────────────────────────────────
+function completeStep() {
+  const btn = g('done-btn');
+  if (btn.classList.contains('state-waiting') ||
+      btn.classList.contains('state-detecting')) return; // not verified yet
+  if (stepBusy) return;
+
+  stepBusy = true;
+  stopAnalysis();
+
+  // Show checkmark overlay, hide scan elements
+  g('scan-line').style.display = 'none';
+  g('done-btn').style.display  = 'none';
+  g('step-overlay').classList.remove('hidden');
+
+  // Mark dot done
+  const dot = g('dot-' + stepIdx);
+  if (dot) dot.className = 'dot done';
+
+  setTimeout(() => {
+    g('step-overlay').classList.add('hidden');
+    g('scan-line').style.display = '';
+    g('done-btn').style.display  = '';
+    stepBusy = false;
+
+    if (stepIdx < STEPS.length - 1) {
+      stepIdx++;
+      resetStepUI();
+      startAnalysis();
+    } else {
+      beginProcessing();
+    }
+  }, 1400);
+}
+
+function beginProcessing() {
+  g('step-badge').textContent   = 'Finalizing';
+  const t = g('step-text');
+  t.textContent  = 'Verifying biometric signatures...';
+  t.style.fontSize = '14px';
+  t.style.color    = 'var(--fg-muted)';
+  g('detect-hint').textContent  = '';
+  g('detect-bar-wrap') && (g('detect-bar-wrap').style.opacity = '0');
+  g('done-btn').style.display   = 'none';
+  g('scan-line').style.display  = 'none';
+  g('dots').style.opacity       = '0.3';
+  g('proc-overlay').classList.remove('hidden');
+
+  setTimeout(() => { stopCamera(); show('complete'); }, 2800);
+}
+
+// ── Tiny helper ───────────────────────────────────────────────────
+function g(id) { return document.getElementById(id); }
+</script>
+</body>
+</html>
