@@ -148,7 +148,7 @@
     .info-row svg { width:18px; height:18px; stroke:var(--cyan); fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0; }
     .info-row span { font-size:13px; font-weight:500; color:var(--fg-muted); }
 
-    .live-steps { width:100%; display:flex; flex-wrap:wrap; justify-content:center; gap:7px; margin:12px 0 6px; }
+    .live-steps { display:none !important; width:100%; display:flex; flex-wrap:wrap; justify-content:center; gap:7px; margin:12px 0 6px; }
     .live-step { border:1px solid var(--border-s); background:rgba(255,255,255,.025); color:var(--fg-muted); border-radius:999px; padding:7px 10px; font-size:11px; font-weight:700; letter-spacing:.2px; transition:all .2s ease; }
     .live-step.active { border-color:var(--amber); color:#fcd34d; background:rgba(245,158,11,.12); box-shadow:0 0 12px rgba(245,158,11,.12); }
     .live-step.done { border-color:var(--cyan); color:var(--cyan); background:var(--cyan-dim); }
@@ -266,6 +266,7 @@
     .step-text.fading { opacity:0; transform:translateY(8px); }
 
     /* Detection hint */
+    .step-text, .detect-hint { display:none !important; }
     .detect-hint {
       font-size:12px; font-weight:500; color:var(--fg-muted);
       margin-top:8px; min-height:18px; text-align:center;
@@ -485,7 +486,7 @@
     <!-- Instructions -->
     <div class="liveness-info">
       <div class="step-badge" id="step-badge">Face Capture</div>
-      <div class="step-text"  id="step-text">Position your face well in the frame</div>
+      <div class="step-text" id="step-text" aria-hidden="true"></div>
 
       <div class="live-steps" id="live-steps" aria-live="polite">
         <span class="live-step" id="mark-center">○ Center</span>
