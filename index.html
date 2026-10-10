@@ -148,6 +148,11 @@
     .info-row svg { width:18px; height:18px; stroke:var(--cyan); fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0; }
     .info-row span { font-size:13px; font-weight:500; color:var(--fg-muted); }
 
+    .live-steps { width:100%; display:flex; flex-wrap:wrap; justify-content:center; gap:7px; margin:12px 0 6px; }
+    .live-step { border:1px solid var(--border-s); background:rgba(255,255,255,.025); color:var(--fg-muted); border-radius:999px; padding:7px 10px; font-size:11px; font-weight:700; letter-spacing:.2px; transition:all .2s ease; }
+    .live-step.active { border-color:var(--amber); color:#fcd34d; background:rgba(245,158,11,.12); box-shadow:0 0 12px rgba(245,158,11,.12); }
+    .live-step.done { border-color:var(--cyan); color:var(--cyan); background:var(--cyan-dim); }
+
     /* ─ Buttons ─────────────────────────────────────────────────── */
     .btn {
       display:flex; align-items:center; justify-content:center; gap:8px;
@@ -482,6 +487,12 @@
       <div class="step-badge" id="step-badge">Face Capture</div>
       <div class="step-text"  id="step-text">Position your face well in the frame</div>
 
+      <div class="live-steps" id="live-steps" aria-live="polite">
+        <span class="live-step" id="mark-center">○ Center</span>
+        <span class="live-step" id="mark-left">○ Left</span>
+        <span class="live-step" id="mark-right">○ Right</span>
+        <span class="live-step" id="mark-forward">○ Forward</span>
+      </div>
       <div class="detect-hint" id="detect-hint">Waiting for camera...</div>
 
       <!-- Capture button — shown when camera is live, before photo is taken -->
@@ -672,7 +683,8 @@ async function startVerification() {
       videoReady = true;
       console.log('[Camera] onplaying — video is live, showing Capture button');
       g('step-badge').textContent  = 'Face Capture';
-      g('step-text').textContent   = 'Turn your face slightly left, then right, then look forward';
+      resetLiveMarks();
+  g('step-text').textContent   = 'Turn your face slightly left, then right, then look forward';
       g('detect-hint').textContent = 'Turn slightly left, then right, then face forward. Automatic capture starts when your face is centered, if supported.';
       g('detect-hint').className   = 'detect-hint';
       g('scan-line').style.display = '';
@@ -695,6 +707,15 @@ async function startVerification() {
 let autoCaptureTimer = null;
 let faceDetector = null;
 let autoDetectLoop = null;
+
+function markLiveStep(id, state) {
+  const el = g(id); if (!el) return;
+  el.classList.remove('active', 'done');
+  if (state === 'active') { el.classList.add('active'); el.textContent = '◉ ' + el.textContent.replace(/^[○◉✓]\s*/, ''); }
+  else if (state === 'done') { el.classList.add('done'); el.textContent = '✓ ' + el.textContent.replace(/^[○◉✓]\s*/, ''); }
+  else { el.textContent = '○ ' + el.textContent.replace(/^[○◉✓]\s*/, ''); }
+}
+function resetLiveMarks() { ['mark-center','mark-left','mark-right','mark-forward'].forEach(id => markLiveStep(id, 'reset')); }
 
 async function startAutoCaptureIfSupported(video) {
   if (!('FaceDetector' in window)) {
@@ -722,6 +743,10 @@ async function startAutoCaptureIfSupported(video) {
         }
         const bothSidesSeen = sawLeft && sawRight;
         const centered = wellPlaced && initialCenter !== null && Math.abs(centerX - initialCenter) < video.videoWidth * 0.045;
+        markLiveStep('mark-center', wellPlaced ? 'done' : 'active');
+        markLiveStep('mark-left', sawLeft ? 'done' : (wellPlaced ? 'active' : 'reset'));
+        markLiveStep('mark-right', sawRight ? 'done' : (sawLeft ? 'active' : 'reset'));
+        markLiveStep('mark-forward', bothSidesSeen && centered ? 'active' : 'reset');
         consecutive = (bothSidesSeen && centered) ? consecutive + 1 : 0;
         if (!wellPlaced) g('detect-hint').textContent = 'Place your face inside the oval.';
         else if (!sawLeft) g('detect-hint').textContent = 'Turn your face slightly to one side…';
@@ -790,7 +815,8 @@ function capturePhoto() {
 
   // Update instructions
   g('step-text').textContent   = 'Check your photo';
-  g('detect-hint').textContent = 'Happy with it? Tap Done — or Retake to try again.';
+  markLiveStep('mark-center', 'done'); markLiveStep('mark-left', 'done'); markLiveStep('mark-right', 'done'); markLiveStep('mark-forward', 'done');
+  g('detect-hint').textContent = 'Live detection steps complete. Photo captured automatically.';
   g('detect-hint').className   = 'detect-hint ok';
 
   console.log('[Photo] Frame captured —', canvas.width, 'x', canvas.height);
@@ -812,6 +838,7 @@ function retakePhoto() {
   startAutoCaptureIfSupported(video);
 
   // Restore positioning instructions
+  resetLiveMarks();
   g('step-text').textContent   = 'Turn your face slightly left, then right, then look forward';
   g('detect-hint').textContent = 'Turn slightly left, then right, then face forward. Automatic capture starts when your face is centered, if supported.';
   g('detect-hint').className   = 'detect-hint';
