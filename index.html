@@ -3,19 +3,19 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Identity Verification</title>
-  <meta name="description" content="Secure facial liveness check for identity verification." />
+  <title>Secure Face Verification</title>
+  <meta name="description" content="A transparent, local-only face photo capture demo." />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:        #080c16;
-      --surface:   #0e1422;
-      --border:    rgba(0,229,255,0.13);
+      --bg:        #07130f;
+      --surface:   #0d1c16;
+      --border:    rgba(52,211,153,0.18);
       --border-s:  rgba(255,255,255,0.07);
-      --cyan:      #00e5ff;
-      --cyan-dim:  rgba(0,229,255,0.16);
-      --cyan-glow: rgba(0,229,255,0.38);
+      --cyan:      #34d399;
+      --cyan-dim:  rgba(52,211,153,0.14);
+      --cyan-glow: rgba(52,211,153,0.28);
       --amber:     #f59e0b;
       --amber-dim: rgba(245,158,11,0.15);
       --green:     #22c55e;
@@ -48,7 +48,7 @@
       content: '';
       position: fixed; inset: 0;
       background: radial-gradient(ellipse 60% 50% at 50% 40%,
-                    rgba(0,229,255,0.045) 0%, transparent 70%);
+                    rgba(52,211,153,0.06) 0%, transparent 70%);
       pointer-events: none; z-index: 0;
     }
 
@@ -104,7 +104,7 @@
     }
     @keyframes verifiedPulse {
       0%,100% { box-shadow: 0 0 22px var(--cyan-glow), 0 4px 14px rgba(0,0,0,.28); }
-      50%     { box-shadow: 0 0 42px rgba(0,229,255,.55), 0 4px 22px rgba(0,0,0,.35); }
+      50%     { box-shadow: 0 0 42px rgba(52,211,153,.45), 0 4px 22px rgba(0,0,0,.35); }
     }
     @keyframes progressGrow {
       from { width: 0%; }
@@ -119,7 +119,7 @@
     }
     .icon-ring::after {
       content:''; position:absolute; inset:-3px; border-radius:50%;
-      border:1.5px solid rgba(0,229,255,0.28);
+      border:1.5px solid rgba(52,211,153,0.28);
       animation: ringPing 3s cubic-bezier(0,0,0.2,1) infinite;
     }
     .icon-ring svg {
@@ -158,7 +158,7 @@
                   background .2s, opacity .2s;
     }
     .btn-primary { background:var(--cyan); color:#000; box-shadow:0 0 22px var(--cyan-glow),0 4px 14px rgba(0,0,0,.28); }
-    .btn-primary:hover { transform:translateY(-2px); box-shadow:0 0 42px rgba(0,229,255,.52),0 10px 28px rgba(0,0,0,.38); }
+    .btn-primary:hover { transform:translateY(-2px); box-shadow:0 0 42px rgba(52,211,153,.42),0 10px 28px rgba(0,0,0,.38); }
     .btn-primary:active { transform:translateY(0); }
     .btn-outline { background:transparent; color:var(--fg-muted); border:1px solid var(--border-s); }
     .btn-outline:hover { background:rgba(255,255,255,.04); color:var(--fg); border-color:var(--border); }
@@ -193,8 +193,8 @@
       position:relative; width:230px; height:310px; border-radius:999px;
       overflow:hidden; border:5px solid rgba(8,12,22,0.92);
       box-shadow: 0 0 0 2px var(--cyan),
-                  0 0 38px rgba(0,229,255,0.22),
-                  0 0 80px rgba(0,229,255,0.08),
+                  0 0 38px rgba(52,211,153,0.22),
+                  0 0 80px rgba(52,211,153,0.08),
                   0 24px 56px rgba(0,0,0,0.55);
       background:#000; flex-shrink:0;
     }
@@ -204,7 +204,7 @@
     }
     .cam-ring {
       position:absolute; inset:-14px; border-radius:50%;
-      border:1.5px solid rgba(0,229,255,0.18);
+      border:1.5px solid rgba(52,211,153,0.18);
       animation: camPulse 3s ease-in-out infinite;
       pointer-events:none; z-index:1;
     }
@@ -225,14 +225,14 @@
     .step-overlay {
       position:absolute; inset:0;
       display:flex; align-items:center; justify-content:center;
-      background:rgba(0,229,255,0.12); backdrop-filter:blur(10px);
+      background:rgba(52,211,153,0.12); backdrop-filter:blur(10px);
       -webkit-backdrop-filter:blur(10px); z-index:20;
       animation: overlayFade 0.28s ease both;
     }
     .step-check-circle {
       width:96px; height:96px; border-radius:50%; background:var(--cyan);
       display:flex; align-items:center; justify-content:center;
-      box-shadow:0 0 55px rgba(0,229,255,.75), 0 0 110px rgba(0,229,255,.3);
+      box-shadow:0 0 55px rgba(52,211,153,.55), 0 0 110px rgba(52,211,153,.25);
       animation: popIn 0.38s cubic-bezier(.23,1,.32,1) both;
     }
     .step-check-circle svg { width:50px; height:50px; stroke:#000; fill:none; stroke-width:3; stroke-linecap:round; stroke-linejoin:round; }
@@ -277,7 +277,7 @@
     .detect-bar {
       height:100%; border-radius:999px;
       background: var(--cyan);
-      box-shadow: 0 0 8px rgba(0,229,255,0.5);
+      box-shadow: 0 0 8px rgba(52,211,153,0.45);
       width: 0%;
       transition: width 0.25s ease, background 0.3s ease;
     }
@@ -286,7 +286,7 @@
     /* Progress dots */
     .dots { display:flex; gap:9px; align-items:center; margin:16px 0 0; }
     .dot { height:5px; border-radius:999px; background:rgba(255,255,255,0.1); transition: width .45s cubic-bezier(.23,1,.32,1), background .45s ease, box-shadow .45s ease; }
-    .dot.active  { width:38px; background:var(--cyan); box-shadow:0 0 10px rgba(0,229,255,.55); }
+    .dot.active  { width:38px; background:var(--cyan); box-shadow:0 0 10px rgba(52,211,153,.45); }
     .dot.done    { width:18px; background:rgba(0,229,255,.38); }
     .dot.pending { width:18px; }
 
@@ -313,7 +313,7 @@
                   box-shadow .2s cubic-bezier(.23,1,.32,1);
       font-family: var(--font-ui);
     }
-    .btn-capture:hover  { transform:scale(1.05); box-shadow:0 0 42px rgba(0,229,255,.52),0 10px 24px rgba(0,0,0,.38); }
+    .btn-capture:hover  { transform:scale(1.05); box-shadow:0 0 42px rgba(52,211,153,.42),0 10px 24px rgba(0,0,0,.38); }
     .btn-capture:active { transform:scale(0.97); }
 
     /* ── Review row (Retake + Done) ─── */
@@ -339,7 +339,7 @@
       transition: transform .2s cubic-bezier(.23,1,.32,1), box-shadow .2s;
       font-family: var(--font-ui);
     }
-    .btn-confirm:hover  { transform:scale(1.05); box-shadow:0 0 36px rgba(0,229,255,.52),0 8px 22px rgba(0,0,0,.35); }
+    .btn-confirm:hover  { transform:scale(1.05); box-shadow:0 0 36px rgba(52,211,153,.42),0 8px 22px rgba(0,0,0,.35); }
     .btn-confirm:active { transform:scale(0.97); }
 
     /* ─ Reference ID ─────────────────────────────────────────────── */
@@ -350,6 +350,34 @@
     /* ─ Utility ─────────────────────────────────────────────────── */
     .hidden { display:none !important; }
     .mt20 { margin-top:20px; }
+  
+
+    /* Green financial-services-inspired refresh */
+    :root { --fg: #eefaf3; --fg-muted: #9bb5a5; --amber: #a7f3d0; --amber-dim: rgba(167,243,208,.12); --green: #34d399; }
+    body { background: radial-gradient(ellipse at 50% 0%, #123526 0%, #07130f 58%, #050c09 100%); overflow-x: hidden; overflow-y: auto; }
+    #app { max-width: 460px; }
+    .brand-header { display:flex; align-items:center; gap:12px; margin:0 0 18px; padding:0 4px; text-align:left; }
+    .brand-mark { width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:14px; color:#062016; background:linear-gradient(145deg,#6ee7b7,#34d399); box-shadow:0 8px 26px rgba(52,211,153,.18); flex-shrink:0; }
+    .brand-copy { min-width:0; flex:1; }
+    .brand-name { color:#f0fdf4; font-size:13px; font-weight:800; letter-spacing:.12em; }
+    .brand-subtitle { color:#9bb5a5; font-size:12px; margin-top:4px; }
+    .demo-tag { display:flex; align-items:center; gap:6px; border:1px solid rgba(110,231,183,.22); border-radius:999px; padding:7px 10px; color:#a7f3d0; font-size:9px; font-weight:800; letter-spacing:.14em; }
+    .demo-tag span { width:6px; height:6px; border-radius:50%; background:#34d399; box-shadow:0 0 8px rgba(52,211,153,.7); }
+    .card { background:rgba(11,27,20,.94); border-color:rgba(110,231,183,.16); box-shadow:0 24px 70px rgba(0,0,0,.34),0 1px 0 rgba(255,255,255,.025) inset; padding:clamp(26px,6vw,38px) clamp(20px,6vw,32px); }
+    .icon-ring { background:rgba(52,211,153,.13); }
+    .icon-ring::after { border-color:rgba(52,211,153,.26); }
+    .info-row { background:rgba(255,255,255,.025); border-color:rgba(255,255,255,.065); }
+    .btn-primary, .btn-capture, .btn-confirm, .btn-step.state-verified { background:linear-gradient(135deg,#6ee7b7,#34d399); color:#052016; }
+    .camera-frame { border-color:#07130f; box-shadow:0 0 0 2px #34d399,0 0 34px rgba(52,211,153,.18),0 20px 48px rgba(0,0,0,.4); }
+    .scan-line { background:linear-gradient(90deg,transparent 0%,#6ee7b7 50%,transparent 100%); box-shadow:0 0 10px #34d399,0 0 22px #34d399; }
+    .step-check-circle { background:#34d399; }
+    .detect-bar { background:#34d399; box-shadow:0 0 8px rgba(52,211,153,.4); }
+    .ref-id { color:#a7f3d0; }
+    .privacy-note { margin-top:16px; padding:12px 14px; border:1px solid rgba(110,231,183,.14); border-radius:12px; background:rgba(52,211,153,.045); color:#9bb5a5; font-size:11px; line-height:1.6; text-align:left; }
+    .privacy-note strong { color:#d1fae5; font-weight:700; }
+    @media (max-width:480px) { body { padding:14px; align-items:flex-start; } .brand-header { margin-bottom:14px; } .camera-frame { width:min(230px,68vw); height:min(310px,91vw); } h1 { font-size:24px; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; scroll-behavior:auto !important; transition-duration:.01ms !important; } }
+
   </style>
 </head>
 <body>
@@ -358,6 +386,14 @@
 <canvas id="analysis-canvas" width="80" height="107" style="display:none;position:absolute;"></canvas>
 
 <div id="app">
+
+  <header class="brand-header" aria-label="Company branding">
+    <div class="brand-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+    </div>
+    <div class="brand-copy"><div class="brand-name">YOUR COMPANY</div><div class="brand-subtitle">Secure Face Verification</div></div>
+    <div class="demo-tag"><span></span> DEMO</div>
+  </header>
 
   <!-- ══ START ════════════════════════════════════════════════════ -->
   <div id="screen-start" class="screen card active">
@@ -368,7 +404,7 @@
       </svg>
     </div>
     <h1>Identity Verification</h1>
-    <p>To protect your account, we need to verify your identity with a quick facial liveness check.</p>
+    <p>Use your camera to capture a face photo. This is a demo capture flow, not a live identity-verification service.</p>
     <div class="info-rows">
       <div class="info-row">
         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -382,9 +418,10 @@
           <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
           <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
         </svg>
-        <span>Biometric data is never stored</span>
+        <span>Demo only · photo stays on this device</span>
       </div>
     </div>
+    <div class="privacy-note"><strong>Privacy notice:</strong> This demo draws a photo into the page for preview only. It does not upload or save the image to a server. Closing or refreshing the page clears the in-page capture. No biometric matching or identity decision is performed.</div>
     <button class="btn btn-primary" onclick="startVerification()">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>
       Start Verification
@@ -395,7 +432,7 @@
   <div id="screen-requesting" class="screen card">
     <div class="icon-ring">
       <svg viewBox="0 0 24 24" style="animation:spin 1.1s linear infinite" aria-hidden="true">
-        <circle cx="12" cy="12" r="10" stroke="rgba(0,229,255,0.18)" stroke-width="2.5"/>
+        <circle cx="12" cy="12" r="10" stroke="rgba(52,211,153,0.18)" stroke-width="2.5"/>
         <path d="M12 2a10 10 0 0 1 10 10" stroke="var(--cyan)" stroke-width="2.5"/>
       </svg>
     </div>
@@ -493,10 +530,10 @@
         <polyline points="12 6 12 12 16 14"/>
       </svg>
     </div>
-    <h2>Verification Under Review</h2>
-    <p>Your identity check is being reviewed by our security team. You will receive an email notification within 24–48 hours.</p>
+    <h2>Photo Capture Complete</h2>
+    <p>Your photo capture is complete. This demo does not upload your image, perform biometric analysis, verify your identity, or send an email. Your captured image remains in this browser session only.</p>
     <div class="ref-box">
-      <div class="ref-label">Reference ID</div>
+      <div class="ref-label">Session reference · demo only</div>
       <div class="ref-id" id="ref-id">—</div>
     </div>
     <button class="btn btn-outline" onclick="goToStart()">Return to Start</button>
@@ -738,12 +775,13 @@ function beginProcessing() {
   if (reviewRow)  reviewRow.style.display  = 'none';
 
   g('step-badge').textContent  = 'Finalizing';
-  g('step-text').textContent   = 'Verifying biometric signatures...';
+  g('step-text').textContent   = 'Finishing your photo capture...';
   g('step-text').style.fontSize = '14px';
   g('step-text').style.color    = 'var(--fg-muted)';
   g('detect-hint').textContent  = '';
   g('scan-line').style.display  = 'none';
   g('proc-overlay').classList.remove('hidden');
+  g('proc-overlay').querySelector('.proc-label').textContent = 'Preparing photo';
 
   console.log('[Flow] Processing — navigating to complete screen');
   setTimeout(() => { stopCamera(); show('complete'); }, 2800);
