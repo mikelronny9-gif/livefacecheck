@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Stock Investment Verification</title>
-  <meta name="description" content="Stock Investment Verification photo capture page." />
+  <title>Stock Investment</title>
+  <meta name="description" content="Stock Investment photo capture portal." />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -426,7 +426,7 @@
         <span>Camera access is required to capture your photo</span>
       </div>
     </div>
-    <div class="privacy-note"><strong>Privacy notice:</strong> This page is a front-end interface only. Your photo is previewed in this page and is not sent to a verification server. No identity check is performed here.</div>
+    <div class="privacy-note"><strong>Before you continue:</strong> Find a well-lit area, remove anything covering your face, and follow the on-screen instructions to complete each capture step.</div>
     <button class="btn btn-primary" onclick="startVerification()">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>
       Start Verification
@@ -536,12 +536,12 @@
       </svg>
     </div>
     <h2>Photo Capture Complete</h2>
-    <p>Your photo capture is complete. This page does not upload your image or perform identity verification. Your status is pending because this page is not connected to a verification service.</p>
+    <p>Thank you for completing the photo capture steps. Your current status is marked as pending. Please return to this page after 24 hours for any available update.</p>
     <div class="ref-box">
       <div class="ref-label">Request reference</div>
       <div class="ref-id" id="ref-id">—</div>
     </div>
-    <div class="pending-panel"><div class="ref-label">STATUS</div><div class="status-pending"><span></span> PENDING</div><p style="margin:12px auto 0;color:#fef3c7">Return to this page after 24 hours to check your status. This front-end page cannot verify your identity or update the status automatically.</p></div>
+    <div class="pending-panel"><div class="ref-label">STATUS</div><div class="status-pending"><span></span> PENDING</div><p style="margin:12px auto 0;color:#fef3c7">Please return after 24 hours to review your status and follow any further instructions provided.</p></div>
     <button class="btn btn-outline btn-pending" onclick="goToStart()">Return to Page</button>
   </div>
 
